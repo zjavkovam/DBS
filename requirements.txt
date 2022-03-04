@@ -1,3 +1,4 @@
 Django==4.0.3
 psycopg2==2.9.3
 psycopg2_binary==2.9.3
+environ==0.8.1
