@@ -18,9 +18,12 @@ def message(request):
 
     cur = conn.cursor()
 
+    poziadavka = "{\n  \"pgsql\": {\n      \"version\": \""
     cur.execute("SELECT VERSION();")
-    poziadavka = cur.fetchone()
+    poziadavka += cur.fetchone()[0] + "\",\n"
     cur.execute("SELECT pg_database_size('dota2')/1024/1024 as dota2_db_size;")
+    poziadavka += "      \"dota2_db_size\": " + str(cur.fetchone()[0]) + "\n  }\n}"
+
 
     conn.commit()
     cur.close()
