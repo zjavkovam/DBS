@@ -60,4 +60,4 @@ jobs:
         with:
           app-name: 'fiit-dbs-xzjavkova-app'
           slot-name: 'Production'
-          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_B90066EE01374A8C9465FD488F9EA4AF }}
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_F6D68B5E649A4F9BAB9FE21035604D17 }}
