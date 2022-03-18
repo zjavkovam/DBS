@@ -1,5 +1,6 @@
 from django.shortcuts import render
-from django.http import HttpResponse
+from django.http import JsonResponse
+import json
 import psycopg2
 
 # Create your views here
@@ -18,14 +19,12 @@ def message(request):
 
     cur = conn.cursor()
 
-    poziadavka = "{\n  \"pgsql\": {\n      \"version\": \""
-    cur.execute("SELECT VERSION();")
-    poziadavka += cur.fetchone()[0] + "\",\n"
-    cur.execute("SELECT pg_database_size('dota2')/1024/1024 as dota2_db_size;")
-    poziadavka += "      \"dota2_db_size\": " + str(cur.fetchone()[0]) + "\n  }\n}"
-
+    poziadavka = {
+        "prva": cur.fetchone()[0],
+        "druha": str(cur.fetchone()[0])
+    }
 
     conn.commit()
     cur.close()
     conn.close()
-    return HttpResponse(poziadavka)
+    return JsonResponse(poziadavka)
