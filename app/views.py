@@ -58,6 +58,8 @@ def prvy_endpoint(request):
             patch["patch_end_date"] = i[2]
             if i[3] is not None:
                 patch["matches"] = [{"match_id": i[3], "duration": i[4]}]
+            else:
+                patch["matches"] = []
             patches.append(patch)
 
     vypisanie = {"patches": patches}
