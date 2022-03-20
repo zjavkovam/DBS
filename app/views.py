@@ -1,6 +1,5 @@
 from django.shortcuts import render
 from django.http import JsonResponse
-import json
 import psycopg2
 
 # Create your views here
@@ -8,14 +7,6 @@ from dbs_zadanie.settings import env
 
 
 def message(request):
-    conn = psycopg2.connect(
-        host="147.175.150.216",
-        port="5432",
-        database="dota2",
-        user="xzjavkova",
-        password="uVo.kur.2.esy",
-    )
-    """
     SECRET_KEY = env('SECRET_KEY')
     conn = psycopg2.connect(
         host=env('DATABASE_HOST'),
@@ -24,13 +15,9 @@ def message(request):
         user=env('DATABASE_USER'),
         password=env('DATABASE_PASS')
     )
-    """
+
     cur = conn.cursor()
-
-
-    poziadavka = {
-
-    }
+    poziadavka = {}
     cur.execute("SELECT VERSION();")
     poziadavka["prva"] = cur.fetchone()[0]
     cur.execute("SELECT pg_database_size('dota2')/1024/1024 as dota2_db_size;")
@@ -44,13 +31,45 @@ def message(request):
     return odpoved
 
 
-def druhy_endpoint(request, id):
+def prvy_endpoint(request, id):
+    SECRET_KEY = env('SECRET_KEY')
     conn = psycopg2.connect(
-        host="147.175.150.216",
-        port="5432",
-        database="dota2",
-        user="xzjavkova",
-        password="uVo.kur.2.esy",
+        host=env('DATABASE_HOST'),
+        port=env('DATABASE_PORT'),
+        database=env('DATABASE_NAME'),
+        user=env('DATABASE_USER'),
+        password=env('DATABASE_PASS')
+    )
+    cur = conn.cursor()
+
+    query = "WITH temp AS( SELECT name, CAST(EXTRACT(epoch from release_date) AS INT) AS patch_start_date, CAST(EXTRACT(epoch from LEAD(release_date,1) OVER(ORDER BY release_date ASC)) AS INT) AS patch_end_date FROM patches) SELECT patches.name as patch_version, patches.patch_start_date, patches.patch_end_date,  matches.id as match_id, CAST(ROUND(matches.duration/60.0,2) as FLOAT) as match_duration FROM temp patches LEFT JOIN matches ON matches.start_time > patches.patch_start_date AND matches.start_time <  patches.patch_end_date"
+    cur.execute(query)
+    output = cur.fetchall()
+    patches = []
+
+    for i in output:
+        if len(patches) != 0 and i[0] == patches[-1]["patch_version"]:
+            patches[-1]["matches"].append({"match_id": i[3], "duration": i[4]})
+        else:
+            patch = {}
+            patch["patch_version"] = i[0]
+            patch["patch_start_date"] = i[1]
+            patch["patch_end_date"] = i[2]
+            patch["matches"] = [{"match_id": i[3], "duration": i[4]}]
+            patches.append(patch)
+
+    vypisanie = {"patches": patches}
+    return JsonResponse(vypisanie)
+
+
+def druhy_endpoint(request, id):
+    SECRET_KEY = env('SECRET_KEY')
+    conn = psycopg2.connect(
+        host=env('DATABASE_HOST'),
+        port=env('DATABASE_PORT'),
+        database=env('DATABASE_NAME'),
+        user=env('DATABASE_USER'),
+        password=env('DATABASE_PASS')
     )
     cur = conn.cursor()
 
@@ -72,16 +91,17 @@ def druhy_endpoint(request, id):
 
 
 def treti_endpoint(request, id):
+    SECRET_KEY = env('SECRET_KEY')
     conn = psycopg2.connect(
-        host="147.175.150.216",
-        port="5432",
-        database="dota2",
-        user="xzjavkova",
-        password="uVo.kur.2.esy",
+        host=env('DATABASE_HOST'),
+        port=env('DATABASE_PORT'),
+        database=env('DATABASE_NAME'),
+        user=env('DATABASE_USER'),
+        password=env('DATABASE_PASS')
     )
     cur = conn.cursor()
 
-    query = "SELECT DISTINCT players.id, COALESCE(players.nick, 'unknown') as player_nick, heroes.localized_name as hero_localized_name, matches.id as match_id, COALESCE(game_objectives.subtype, 'NO_ACTION') as hero_action, COUNT(*) FROM players JOIN matches_players_details ON  players.id = matches_players_details.player_id JOIN heroes ON matches_players_details.hero_id=heroes.id JOIN matches ON matches_players_details.match_id=matches.id FULL OUTER JOIN game_objectives  ON matches_players_details.id = game_objectives.match_player_detail_id_1 where players.id = " + id + " GROUP BY players.id, heroes.localized_name, matches.id, game_objectives.subtype ORDER BY match_id"
+    query = "SELECT players.id, COALESCE(players.nick, 'unknown') as player_nick, heroes.localized_name as hero_localized_name, matches.id as match_id, COALESCE(game_objectives.subtype, 'NO_ACTION') as hero_action, COUNT(*) FROM players JOIN matches_players_details ON  players.id = matches_players_details.player_id JOIN heroes ON matches_players_details.hero_id=heroes.id JOIN matches ON matches_players_details.match_id=matches.id FULL OUTER JOIN game_objectives  ON matches_players_details.id = game_objectives.match_player_detail_id_1 where players.id = " + id + " GROUP BY players.id, heroes.localized_name, matches.id, game_objectives.subtype ORDER BY match_id"
     cur.execute(query)
     output = cur.fetchall()
     vypisanie = {"id": output[0][0], "player_nick": output[0][1], "matches": []}
@@ -101,17 +121,19 @@ def treti_endpoint(request, id):
 
     return JsonResponse(vypisanie)
 
+
 def stvrty_endpoint(request, id):
+    SECRET_KEY = env('SECRET_KEY')
     conn = psycopg2.connect(
-        host="147.175.150.216",
-        port="5432",
-        database="dota2",
-        user="xzjavkova",
-        password="uVo.kur.2.esy",
+        host=env('DATABASE_HOST'),
+        port=env('DATABASE_PORT'),
+        database=env('DATABASE_NAME'),
+        user=env('DATABASE_USER'),
+        password=env('DATABASE_PASS')
     )
     cur = conn.cursor()
 
-    query = "SELECT DISTINCT players.id, COALESCE(players.nick, 'unknown') as player_nick, heroes.localized_name as hero_localized_name, matches.id as match_id, abilities.name as ability_name, COUNT(abilities) as count, MAX(ability_upgrades.level) as level FROM players JOIN matches_players_details ON players.id = matches_players_details.player_id JOIN heroes ON matches_players_details.hero_id=heroes.id JOIN matches ON matches_players_details.match_id=matches.id JOIN ability_upgrades ON matches_players_details.id = ability_upgrades.match_player_detail_id JOIN abilities ON ability_upgrades.ability_id = abilities.id where players.id ="+id+"GROUP BY players.id, heroes.localized_name, matches.id, abilities.name ORDER BY match_id"
+    query = "SELECT players.id, COALESCE(players.nick, 'unknown') as player_nick, heroes.localized_name as hero_localized_name, matches.id as match_id, abilities.name as ability_name, COUNT(abilities) as count, MAX(ability_upgrades.level) as level FROM players JOIN matches_players_details ON players.id = matches_players_details.player_id JOIN heroes ON matches_players_details.hero_id=heroes.id JOIN matches ON matches_players_details.match_id=matches.id JOIN ability_upgrades ON matches_players_details.id = ability_upgrades.match_player_detail_id JOIN abilities ON ability_upgrades.ability_id = abilities.id where players.id ="+id+"GROUP BY players.id, heroes.localized_name, matches.id, abilities.name ORDER BY match_id"
     cur.execute(query)
     output = cur.fetchall()
     vypisanie = {"id": output[0][0], "player_nick": output[0][1], "matches": []}
