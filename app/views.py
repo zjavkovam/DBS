@@ -49,13 +49,15 @@ def prvy_endpoint(request):
 
     for i in output:
         if len(patches) != 0 and i[0] == patches[-1]["patch_version"]:
+
             patches[-1]["matches"].append({"match_id": i[3], "duration": i[4]})
         else:
             patch = {}
             patch["patch_version"] = i[0]
             patch["patch_start_date"] = i[1]
             patch["patch_end_date"] = i[2]
-            patch["matches"] = [{"match_id": i[3], "duration": i[4]}]
+            if i[3] is not None:
+                patch["matches"] = [{"match_id": i[3], "duration": i[4]}]
             patches.append(patch)
 
     vypisanie = {"patches": patches}
