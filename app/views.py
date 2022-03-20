@@ -31,7 +31,7 @@ def message(request):
     return odpoved
 
 
-def prvy_endpoint(request, id):
+def prvy_endpoint(request):
     SECRET_KEY = env('SECRET_KEY')
     conn = psycopg2.connect(
         host=env('DATABASE_HOST'),
