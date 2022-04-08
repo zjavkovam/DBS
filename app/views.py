@@ -135,7 +135,7 @@ def stvrty_endpoint(request, id):
     )
     cur = conn.cursor()
 
-    query = "SELECT players.id, COALESCE(players.nick, 'unknown') as player_nick, heroes.localized_name as hero_localized_name, matches.id as match_id, abilities.name as ability_name, COUNT(abilities) as count, MAX(ability_upgrades.level) as level FROM players JOIN matches_players_details ON players.id = matches_players_details.player_id JOIN heroes ON matches_players_details.hero_id=heroes.id JOIN matches ON matches_players_details.match_id=matches.id JOIN ability_upgrades ON matches_players_details.id = ability_upgrades.match_player_detail_id JOIN abilities ON ability_upgrades.ability_id = abilities.id where players.id =" + id + "GROUP BY players.id, heroes.localized_name, matches.id, abilities.name ORDER BY match_id"
+    query = "WITH tab AS( SELECT ability_name, hero_name, bucket, winner, COUNT(bucket) as bucket_count from (SELECT abilities.name as ability_name, ability_upgrades.time as upgrade_time, heroes.localized_name as hero_name, ROUND(ability_upgrades.time/(matches.duration/100.0)) as when, (CASE WHEN ROUND(ability_upgrades.time/(matches.duration/100.0)) <= 9 THEN '0-9' WHEN ROUND(ability_upgrades.time/(matches.duration/100.0)) >=10 AND ROUND(ability_upgrades.time/(matches.duration/100.0)) <20 THEN '10-19' WHEN ROUND(ability_upgrades.time/(matches.duration/100.0)) >=20 AND ROUND(ability_upgrades.time/(matches.duration/100.0)) <30 THEN '20-29' WHEN ROUND(ability_upgrades.time/(matches.duration/100.0)) >=30 AND ROUND(ability_upgrades.time/(matches.duration/100.0)) <40 THEN '30-39' WHEN ROUND(ability_upgrades.time/(matches.duration/100.0)) >=40 AND ROUND(ability_upgrades.time/(matches.duration/100.0)) <50 THEN '40-49' WHEN ROUND(ability_upgrades.time/(matches.duration/100.0)) >=50 AND ROUND(ability_upgrades.time/(matches.duration/100.0)) <60 THEN '50-59' WHEN ROUND(ability_upgrades.time/(matches.duration/100.0)) >=60 AND ROUND(ability_upgrades.time/(matches.duration/100.0)) <70 THEN '60-69' WHEN ROUND(ability_upgrades.time/(matches.duration/100.0)) >=70 AND ROUND(ability_upgrades.time/(matches.duration/100.0)) <80 THEN '70-79' WHEN ROUND(ability_upgrades.time/(matches.duration/100.0)) >=80 AND ROUND(ability_upgrades.time/(matches.duration/100.0)) <90 THEN '80-89' WHEN ROUND(ability_upgrades.time/(matches.duration/100.0)) >=90 AND ROUND(ability_upgrades.time/(matches.duration/100.0)) <100 THEN '90-99' WHEN ROUND(ability_upgrades.time/(matches.duration/100.0)) >=100 THEN '100-109'  END) as bucket, (CASE  WHEN matches_players_details.player_slot <= 4 THEN matches.radiant_win  WHEN matches_players_details.player_slot >= 128 THEN not matches.radiant_win  END) as winner from abilities JOIN ability_upgrades ON ability_upgrades.ability_id = abilities.id JOIN matches_players_details ON matches_players_details.id = ability_upgrades.match_player_detail_id JOIN heroes ON heroes.id = matches_players_details.hero_id JOIN matches ON matches.id = matches_players_details.match_id WHERE abilities.id =" + id + " ORDER BY bucket ) AS t1 GROUP by t1.ability_name, t1.hero_name, t1.winner, t1.bucket ORDER BY bucket, winner) SELECT * from(SELECT tab.ability_name, tab.hero_name, tab.bucket, tab.winner, tab.bucket_count, row_number() over (partition by winner, hero_name order by tab.bucket_count desc) as rank from tab) ranks where rank <=1 ORDER BY hero_name, bucket"
     cur.execute(query)
     output = cur.fetchall()
     vypisanie = {"id": output[0][0], "player_nick": output[0][1], "matches": []}
@@ -183,4 +183,40 @@ def z5_prvy_endpoint(request, id):
         if hero != {}:
             hero["top_purchases"].append({"id": i[3], "name": i[4], "count": i[5]})
     vypisanie["heroes"].append(hero)
+    return JsonResponse(vypisanie)
+
+
+def z5_druhy_endpoint(request, id):
+    SECRET_KEY = env('SECRET_KEY')
+    conn = psycopg2.connect(
+        host=env('DATABASE_HOST'),
+        port=env('DATABASE_PORT'),
+        database=env('DATABASE_NAME'),
+        user=env('DATABASE_USER'),
+        password=env('DATABASE_PASS')
+    )
+    cur = conn.cursor()
+
+    query = "WITH tab AS( SELECT ability_id, ability_name, hero_id, hero_name, bucket, winner, COUNT(bucket) as bucket_count from ( SELECT abilities.id as ability_id, abilities.name as ability_name, ability_upgrades.time as upgrade_time, heroes.id as hero_id, heroes.localized_name as hero_name, ROUND(ability_upgrades.time/(matches.duration/100.0)) as when, (CASE WHEN ROUND(ability_upgrades.time/(matches.duration/100.0)) <= 9 THEN '0-9' WHEN ROUND(ability_upgrades.time/(matches.duration/100.0)) >=10 AND ROUND(ability_upgrades.time/(matches.duration/100.0)) <20 THEN '10-19' WHEN ROUND(ability_upgrades.time/(matches.duration/100.0)) >=20 AND ROUND(ability_upgrades.time/(matches.duration/100.0)) <30 THEN '20-29' WHEN ROUND(ability_upgrades.time/(matches.duration/100.0)) >=30 AND ROUND(ability_upgrades.time/(matches.duration/100.0)) <40 THEN '30-39' WHEN ROUND(ability_upgrades.time/(matches.duration/100.0)) >=40 AND ROUND(ability_upgrades.time/(matches.duration/100.0)) <50 THEN '40-49' WHEN ROUND(ability_upgrades.time/(matches.duration/100.0)) >=50 AND ROUND(ability_upgrades.time/(matches.duration/100.0)) <60 THEN '50-59' WHEN ROUND(ability_upgrades.time/(matches.duration/100.0)) >=60 AND ROUND(ability_upgrades.time/(matches.duration/100.0)) <70 THEN '60-69' WHEN ROUND(ability_upgrades.time/(matches.duration/100.0)) >=70 AND ROUND(ability_upgrades.time/(matches.duration/100.0)) <80 THEN '70-79' WHEN ROUND(ability_upgrades.time/(matches.duration/100.0)) >=80 AND ROUND(ability_upgrades.time/(matches.duration/100.0)) <90 THEN '80-89' WHEN ROUND(ability_upgrades.time/(matches.duration/100.0)) >=90 AND ROUND(ability_upgrades.time/(matches.duration/100.0)) <100 THEN '90-99' WHEN ROUND(ability_upgrades.time/(matches.duration/100.0)) >=100 THEN '100-109'  END) as bucket, (CASE WHEN matches_players_details.player_slot <= 4 THEN matches.radiant_win WHEN matches_players_details.player_slot >= 128 THEN not matches.radiant_win END) as winner from abilities JOIN ability_upgrades ON ability_upgrades.ability_id = abilities.id JOIN matches_players_details ON matches_players_details.id = ability_upgrades.match_player_detail_id JOIN heroes ON heroes.id = matches_players_details.hero_id JOIN matches ON matches.id = matches_players_details.match_id WHERE abilities.id =" + id + " ORDER BY bucket) AS t1 GROUP by t1.ability_name, t1. ability_id, t1.hero_name, t1.hero_id, t1.winner, t1.bucket ORDER BY bucket, winner ) SELECT * from( SELECT tab.ability_id, tab.ability_name, tab.hero_id, tab.hero_name, tab.bucket, tab.winner, tab.bucket_count, row_number() over (partition by winner, hero_name order by tab.bucket_count desc) as rank from tab) ranks where rank <=1 ORDER BY hero_name, bucket"
+    cur.execute(query)
+    output = cur.fetchall()
+    vypisanie = {"id": output[0][0], "name": output[0][1], "heroes": []}
+
+    hero = {}
+    for i in output:
+        if len(hero) != 0 and i[2] != hero["id"]:
+            vypisanie["heroes"].append(hero)
+            hero = {}
+        if hero == {}:
+            hero["id"] = i[2]
+            hero["name"] = i[3]
+            hero["usage_winners"] = {}
+            hero["usage_loosers"] = {}
+        if hero != {}:
+            if i[5] is True:
+                hero["usage_winners"] = {"bucket": i[4], "count": i[6]}
+            else:
+                hero["usage_loosers"] = {"bucket": i[4], "count": i[6]}
+    vypisanie["heroes"].append(hero)
+
     return JsonResponse(vypisanie)
