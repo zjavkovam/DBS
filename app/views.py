@@ -218,3 +218,37 @@ def z5_druhy_endpoint(request, id):
     vypisanie["heroes"].append(hero)
 
     return JsonResponse(vypisanie)
+
+
+def z5_treti_endpoint(request):
+    SECRET_KEY = env('SECRET_KEY')
+    conn = psycopg2.connect(
+        host=env('DATABASE_HOST'),
+        port=env('DATABASE_PORT'),
+        database=env('DATABASE_NAME'),
+        user=env('DATABASE_USER'),
+        password=env('DATABASE_PASS')
+    )
+    cur = conn.cursor()
+
+    query = "WITH tab AS( SELECT ability_id, ability_name, hero_id, hero_name, bucket, winner, COUNT(bucket) as bucket_count from (SELECT abilities.id as ability_id, abilities.name as ability_name, ability_upgrades.time as upgrade_time, heroes.id as hero_id, heroes.localized_name as hero_name, (CASE WHEN (ability_upgrades.time*100.0/matches.duration) <= 9 THEN '0-9' WHEN (ability_upgrades.time*100.0/matches.duration) >=10 AND (ability_upgrades.time*100.0/matches.duration) <20 THEN '10-19' WHEN (ability_upgrades.time*100.0/matches.duration) >=20 AND (ability_upgrades.time*100.0/matches.duration) <30 THEN '20-29' WHEN (ability_upgrades.time*100.0/matches.duration) >=30 AND (ability_upgrades.time*100.0/matches.duration) <40 THEN '30-39' WHEN (ability_upgrades.time*100.0/matches.duration) >=40 AND (ability_upgrades.time*100.0/matches.duration) <50 THEN '40-49' WHEN (ability_upgrades.time*100.0/matches.duration) >=50 AND (ability_upgrades.time*100.0/matches.duration) <60 THEN '50-59' WHEN (ability_upgrades.time*100.0/matches.duration) >=60 AND (ability_upgrades.time*100.0/matches.duration) <70 THEN '60-69' WHEN (ability_upgrades.time*100.0/matches.duration) >=70 AND (ability_upgrades.time*100.0/matches.duration) <80 THEN '70-79' WHEN (ability_upgrades.time*100.0/matches.duration) >=80 AND (ability_upgrades.time*100.0/matches.duration) <90 THEN '80-89' WHEN (ability_upgrades.time*100.0/matches.duration) >=90 AND (ability_upgrades.time*100.0/matches.duration) <100 THEN '90-99' WHEN (ability_upgrades.time*100.0/matches.duration) >=100 THEN '100-109' END) as bucket, (CASE WHEN matches_players_details.player_slot <= 4 THEN matches.radiant_win WHEN matches_players_details.player_slot >= 128 THEN not matches.radiant_win END) as winner from abilities JOIN ability_upgrades ON ability_upgrades.ability_id = abilities.id JOIN matches_players_details ON matches_players_details.id = ability_upgrades.match_player_detail_id JOIN heroes ON heroes.id = matches_players_details.hero_id JOIN matches ON matches.id = matches_players_details.match_id WHERE abilities.id = "+id+" ORDER BY bucket) AS t1 GROUP by t1.ability_name, t1. ability_id, t1.hero_name, t1.hero_id, t1.winner, t1.bucket ORDER BY bucket, winner ) SELECT * from(SELECT tab.ability_id, tab.ability_name, tab.hero_id, tab.hero_name, tab.bucket, tab.winner, tab.bucket_count, row_number() over (partition by winner, hero_name order by tab.bucket_count desc) as rank from tab) ranks where rank <=1 ORDER BY hero_id, winner"
+    cur.execute(query)
+    output = cur.fetchall()
+    vypisanie = {"id": output[0][0], "name": output[0][1], "heroes": []}
+
+    hero = {}
+    for i in output:
+        if len(hero) != 0 and i[2] != hero["id"]:
+            vypisanie["heroes"].append(hero)
+            hero = {}
+        if hero == {}:
+            hero["id"] = i[2]
+            hero["name"] = i[3]
+        if hero != {}:
+            if i[5] is True:
+                hero["usage_winners"] = {"bucket": i[4], "count": i[6]}
+            else:
+                hero["usage_loosers"] = {"bucket": i[4], "count": i[6]}
+    vypisanie["heroes"].append(hero)
+
+    return JsonResponse(vypisanie)

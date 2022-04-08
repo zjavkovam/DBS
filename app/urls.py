@@ -10,5 +10,6 @@ urlpatterns = [
     path('players/<id>/game_objectives/', views.treti_endpoint),
     path('players/<id>/abilities/', views.stvrty_endpoint),
     path('matches/<id>/top_purchases/', views.z5_prvy_endpoint),
-    path('abilities/<id>/usage/',views.z5_druhy_endpoint)
+    path('abilities/<id>/usage/',views.z5_druhy_endpoint),
+    path('statistics/tower_kills/', views.z5_treti_endpoint)
 ]
