@@ -231,7 +231,8 @@ def z5_treti_endpoint(request):
     )
     cur = conn.cursor()
 
-    query = "WITH zapasy AS( SELECT gobj.id AS g_id, mpd.match_id AS match_id, mpd.hero_id AS hero_id, h.localized_name AS hero_name FROM game_objectives gobj JOIN matches_players_details mpd ON mpd.id = match_player_detail_id_1 JOIN heroes h ON h.id = mpd.hero_id WHERE subtype = 'CHAT_MESSAGE_TOWER_KILL' ) SELECT * FROM( SELECT DISTINCT ON (hero_id) hero_id,hero_name, counter FROM ( SELECT hero_id, COUNT(1) AS counter,hero_name FROM( SELECT z.*, ROW_NUMBER() OVER(ORDER BY g_id) AS rn, ROW_NUMBER() OVER(PARTITION BY match_id, hero_id ORDER BY g_id) AS part_rn FROM zapasy z ) AS nova GROUP BY hero_id, (rn-part_rn),hero_name ORDER BY hero_id, counter DESC ) AS spocitanie ) AS zoradenie ORDER BY counter DESC,hero_name ASC"
+
+    query = "WITH t AS (SELECT matches_players_details.match_id as match_id, localized_name as hero_name, heroes.id as hero_id, game_objectives.id as objective_id from heroes JOIN matches_players_details ON matches_players_details.hero_id = heroes.id JOIN game_objectives ON game_objectives.match_player_detail_id_1 = matches_players_details.id WHERE game_objectives.subtype = 'CHAT_MESSAGE_TOWER_KILL') SELECT * FROM( Select DISTINCT ON (hero_name) hero_id,hero_name, count(1) from (Select match_id, hero_name, objective_id, hero_id, row_number() over (order by objective_id) as rn, row_number() over (partition by hero_name, match_id order by objective_id) as part_rn From t) as table2 Group by hero_name, match_id, hero_id, (rn-part_rn) ORDER BY hero_name, count DESC) as table3 ORDER BY count DESC, hero_name ASC"
     cur.execute(query)
     output = cur.fetchall()
     vypisanie = {"heroes": []}
