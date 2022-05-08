@@ -388,9 +388,7 @@ def z6_5(request, url_id):
             count = Count("purchaselogs__item_id__name")
         )\
         .order_by('hero__localized_name', F('count').desc())\
-        .explain(analyze=True)
 
-    """
     row0 = purchaces[0]
     vypisanie = {"id": list(row0.values())[0], "heroes": []}
 
@@ -410,9 +408,9 @@ def z6_5(request, url_id):
             count += 1
    
     vypisanie["heroes"].append(hero)
-    """
 
-    return JsonResponse({"analyza":purchaces})
+
+    return JsonResponse(vypisanie)
 
 
 
