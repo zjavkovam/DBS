@@ -1,5 +1,12 @@
-from django.shortcuts import render
-from django.http import JsonResponse
+
+from django.db.models import F, Q, When, Case, Value, TextField, Max, Window, Subquery, OuterRef
+from django.db.models import Count
+from django.db.models.functions import Coalesce, Lead, RowNumber
+from django.http import JsonResponse, HttpResponse
+from datetime import datetime
+from django.template.defaultfilters import floatformat
+
+from app.models import *
 import psycopg2
 
 # Create your views here
@@ -166,7 +173,7 @@ def z5_prvy_endpoint(request, id):
     )
     cur = conn.cursor()
 
-    query = "WITH t AS (SELECT matches.id as match_id,  heroes.id as hero_id, heroes.localized_name as hero_name, items.id as item_id, items.name as item_name, COUNT(items) as count, (CASE WHEN matches_players_details.player_slot <= 4 THEN matches.radiant_win  WHEN matches_players_details.player_slot >= 128 THEN not matches.radiant_win END) as winner from matches JOIN matches_players_details ON matches.id = matches_players_details.match_id JOIN heroes ON matches_players_details.hero_id = heroes.id JOIN purchase_logs ON matches_players_details.id = purchase_logs.match_player_detail_id JOIN items ON purchase_logs.item_id = items.id where matches.id = "+id+" GROUP BY matches.id, heroes.localized_name, items.name, heroes.id, items.id, matches_players_details.player_slot ORDER BY heroes.localized_name, items.name) select * from(select match_id, hero_id, hero_name, item_id,item_name, count, winner, row_number() over  (partition by hero_name order by count desc,item_name) as rank from t) ranks where rank <=5 AND winner = true ORDER BY hero_id, rank"
+    query = "WITH t AS (SELECT matches.id as match_id,  heroes.id as hero_id, heroes.localized_name as hero_name, items.id as item_id, items.name as item_name, COUNT(items) as count, (CASE WHEN matches_players_details.player_slot <= 4 THEN matches.radiant_win  WHEN matches_players_details.player_slot >= 128 THEN not matches.radiant_win END) as winner from matches JOIN matches_players_details ON matches.id = matches_players_details.match_id JOIN heroes ON matches_players_details.hero_id = heroes.id JOIN purchase_logs ON matches_players_details.id = purchase_logs.match_player_detail_id JOIN items ON purchase_logs.item_id = items.id where matches.id = " + id + " GROUP BY matches.id, heroes.localized_name, items.name, heroes.id, items.id, matches_players_details.player_slot ORDER BY heroes.localized_name, items.name) select * from(select match_id, hero_id, hero_name, item_id,item_name, count, winner, row_number() over  (partition by hero_name order by count desc,item_name) as rank from t) ranks where rank <=5 AND winner = true ORDER BY hero_id, rank"
     cur.execute(query)
     output = cur.fetchall()
     vypisanie = {"id": output[0][0], "heroes": []}
@@ -197,7 +204,7 @@ def z5_druhy_endpoint(request, id):
     )
     cur = conn.cursor()
 
-    query = "WITH tab AS( SELECT ability_id, ability_name, hero_id, hero_name, bucket, winner, COUNT(bucket) as bucket_count from (SELECT abilities.id as ability_id, abilities.name as ability_name, ability_upgrades.time as upgrade_time, heroes.id as hero_id, heroes.localized_name as hero_name, (CASE WHEN (ability_upgrades.time*100.0/matches.duration) <= 9 THEN '0-9' WHEN (ability_upgrades.time*100.0/matches.duration) >=10 AND (ability_upgrades.time*100.0/matches.duration) <20 THEN '10-19' WHEN (ability_upgrades.time*100.0/matches.duration) >=20 AND (ability_upgrades.time*100.0/matches.duration) <30 THEN '20-29' WHEN (ability_upgrades.time*100.0/matches.duration) >=30 AND (ability_upgrades.time*100.0/matches.duration) <40 THEN '30-39' WHEN (ability_upgrades.time*100.0/matches.duration) >=40 AND (ability_upgrades.time*100.0/matches.duration) <50 THEN '40-49' WHEN (ability_upgrades.time*100.0/matches.duration) >=50 AND (ability_upgrades.time*100.0/matches.duration) <60 THEN '50-59' WHEN (ability_upgrades.time*100.0/matches.duration) >=60 AND (ability_upgrades.time*100.0/matches.duration) <70 THEN '60-69' WHEN (ability_upgrades.time*100.0/matches.duration) >=70 AND (ability_upgrades.time*100.0/matches.duration) <80 THEN '70-79' WHEN (ability_upgrades.time*100.0/matches.duration) >=80 AND (ability_upgrades.time*100.0/matches.duration) <90 THEN '80-89' WHEN (ability_upgrades.time*100.0/matches.duration) >=90 AND (ability_upgrades.time*100.0/matches.duration) <100 THEN '90-99' WHEN (ability_upgrades.time*100.0/matches.duration) >=100 THEN '100-109' END) as bucket, (CASE WHEN matches_players_details.player_slot <= 4 THEN matches.radiant_win WHEN matches_players_details.player_slot >= 128 THEN not matches.radiant_win END) as winner from abilities JOIN ability_upgrades ON ability_upgrades.ability_id = abilities.id JOIN matches_players_details ON matches_players_details.id = ability_upgrades.match_player_detail_id JOIN heroes ON heroes.id = matches_players_details.hero_id JOIN matches ON matches.id = matches_players_details.match_id WHERE abilities.id = "+id+" ORDER BY bucket) AS t1 GROUP by t1.ability_name, t1. ability_id, t1.hero_name, t1.hero_id, t1.winner, t1.bucket ORDER BY bucket, winner ) SELECT * from(SELECT tab.ability_id, tab.ability_name, tab.hero_id, tab.hero_name, tab.bucket, tab.winner, tab.bucket_count, row_number() over (partition by winner, hero_name order by tab.bucket_count desc) as rank from tab) ranks where rank <=1 ORDER BY hero_id, winner"
+    query = "WITH tab AS( SELECT ability_id, ability_name, hero_id, hero_name, bucket, winner, COUNT(bucket) as bucket_count from (SELECT abilities.id as ability_id, abilities.name as ability_name, ability_upgrades.time as upgrade_time, heroes.id as hero_id, heroes.localized_name as hero_name, (CASE WHEN (ability_upgrades.time*100.0/matches.duration) <= 9 THEN '0-9' WHEN (ability_upgrades.time*100.0/matches.duration) >=10 AND (ability_upgrades.time*100.0/matches.duration) <20 THEN '10-19' WHEN (ability_upgrades.time*100.0/matches.duration) >=20 AND (ability_upgrades.time*100.0/matches.duration) <30 THEN '20-29' WHEN (ability_upgrades.time*100.0/matches.duration) >=30 AND (ability_upgrades.time*100.0/matches.duration) <40 THEN '30-39' WHEN (ability_upgrades.time*100.0/matches.duration) >=40 AND (ability_upgrades.time*100.0/matches.duration) <50 THEN '40-49' WHEN (ability_upgrades.time*100.0/matches.duration) >=50 AND (ability_upgrades.time*100.0/matches.duration) <60 THEN '50-59' WHEN (ability_upgrades.time*100.0/matches.duration) >=60 AND (ability_upgrades.time*100.0/matches.duration) <70 THEN '60-69' WHEN (ability_upgrades.time*100.0/matches.duration) >=70 AND (ability_upgrades.time*100.0/matches.duration) <80 THEN '70-79' WHEN (ability_upgrades.time*100.0/matches.duration) >=80 AND (ability_upgrades.time*100.0/matches.duration) <90 THEN '80-89' WHEN (ability_upgrades.time*100.0/matches.duration) >=90 AND (ability_upgrades.time*100.0/matches.duration) <100 THEN '90-99' WHEN (ability_upgrades.time*100.0/matches.duration) >=100 THEN '100-109' END) as bucket, (CASE WHEN matches_players_details.player_slot <= 4 THEN matches.radiant_win WHEN matches_players_details.player_slot >= 128 THEN not matches.radiant_win END) as winner from abilities JOIN ability_upgrades ON ability_upgrades.ability_id = abilities.id JOIN matches_players_details ON matches_players_details.id = ability_upgrades.match_player_detail_id JOIN heroes ON heroes.id = matches_players_details.hero_id JOIN matches ON matches.id = matches_players_details.match_id WHERE abilities.id = " + id + " ORDER BY bucket) AS t1 GROUP by t1.ability_name, t1. ability_id, t1.hero_name, t1.hero_id, t1.winner, t1.bucket ORDER BY bucket, winner ) SELECT * from(SELECT tab.ability_id, tab.ability_name, tab.hero_id, tab.hero_name, tab.bucket, tab.winner, tab.bucket_count, row_number() over (partition by winner, hero_name order by tab.bucket_count desc) as rank from tab) ranks where rank <=1 ORDER BY hero_id, winner"
     cur.execute(query)
     output = cur.fetchall()
     vypisanie = {"id": output[0][0], "name": output[0][1], "heroes": []}
@@ -231,15 +238,196 @@ def z5_treti_endpoint(request):
     )
     cur = conn.cursor()
 
-
     query = "WITH t AS (SELECT matches_players_details.match_id as match_id, localized_name as hero_name, heroes.id as hero_id, game_objectives.id as objective_id from heroes JOIN matches_players_details ON matches_players_details.hero_id = heroes.id JOIN game_objectives ON game_objectives.match_player_detail_id_1 = matches_players_details.id WHERE game_objectives.subtype = 'CHAT_MESSAGE_TOWER_KILL') SELECT * FROM( Select DISTINCT ON (hero_name) hero_id,hero_name, count(1) from (Select match_id, hero_name, objective_id, hero_id, row_number() over (order by objective_id) as rn, row_number() over (partition by hero_name, match_id order by objective_id) as part_rn From t) as table2 Group by hero_name, match_id, hero_id, (rn-part_rn) ORDER BY hero_name, count DESC) as table3 ORDER BY count DESC, hero_name ASC"
     cur.execute(query)
     output = cur.fetchall()
     vypisanie = {"heroes": []}
 
-    hero = {}
     for i in output:
         hero = {"id": i[0], "name": i[1], "tower_kills": i[2]}
         vypisanie["heroes"].append(hero)
 
     return JsonResponse(vypisanie)
+
+
+def z6_1(request):
+    patches = Patches.objects.using("dota")\
+        .values("name","release_date")\
+        .annotate(
+            end = Window(expression=Lead('release_date'))
+        )
+
+
+    return HttpResponse(patches, content_type='application/json')
+
+
+def z6_2(request, url_id):
+    player = MatchesPlayersDetails.objects.using("dota").filter(player_id=url_id).select_related("hero", "player", "match"). \
+        values("player_id", "match_id","hero__localized_name","level") \
+        .annotate(
+            winner = Case(
+                When(Q(player_slot__lte=4), then = "match__radiant_win"),
+                When(Q(player_slot__gte=128) & Q(match__radiant_win=True), then = False),
+                When(Q(player_slot__gte=128) & Q(match__radiant_win=False), then = True)
+            )
+        )\
+        .annotate(
+            playe_nick = Coalesce('player__nick', Value('unknown'), output_field=TextField()),
+        )\
+        .annotate(
+            match_duration = F("match__duration")/60.0
+    )\
+        .annotate(
+            hero_xp=Coalesce('xp_hero', Value(0)),
+            creep_xp=Coalesce('xp_creep', Value(0)),
+            other_xp=Coalesce('xp_other', Value(0)),
+            roshan_xp=Coalesce('xp_roshan', Value(0)),
+            experiences_gained=F("hero_xp") + F("creep_xp") + F("other_xp") + F("roshan_xp")
+        )\
+        .explain(analyze=True)
+
+
+    row0 =  player[0]
+    vypisanie = {"id": list(row0.values())[0], "player_nick": list(row0.values())[5], "matches": []}
+
+    for i in player:
+        match = {}
+        match["match_id"] = list(i.values())[1]
+        match["hero_localized_name"] = list(i.values())[2]
+        match["match_duration_minutes"] = round((list(i.values())[6]),2)
+        match["experiences_gained"] = list(i.values())[11]
+        match["level_gained"] = list(i.values())[3]
+        match["winner"] = list(i.values())[4]
+        vypisanie["matches"].append(match)
+
+    return JsonResponse(vypisanie)
+
+
+def z6_3(request, url_id):
+    player = MatchesPlayersDetails.objects.using("dota").select_related("hero", "player")\
+        .prefetch_related("match_player_detail_id_1").filter(player=url_id)\
+        .values("player__id", "hero__localized_name", "match_id")\
+        .annotate(
+            playe_nick=Coalesce('player__nick', Value('unknown'), output_field=TextField()),
+        )\
+        .annotate(
+            hero_action=Coalesce('match_player_detail_id_1__subtype', Value('NO_ACTION'), output_field=TextField())
+        )\
+        .order_by('match_id')\
+        .annotate(
+            count = Count('hero_action')
+        )\
+
+
+    row0 =  player[0]
+    vypisanie = {"id": list(row0.values())[0], "player_nick": list(row0.values())[3], "matches": []}
+
+    match = {}
+    for i in player:
+        if len(match) != 0 and list(i.values())[2] != match["match_id"]:
+            vypisanie["matches"].append(match)
+            match = {}
+        if match == {}:
+            match["match_id"] = list(i.values())[2]
+            match["hero_localized_name"] = list(i.values())[1]
+            match["actions"] = []
+        if match != {}:
+            match["actions"].append({"hero_action": list(i.values())[4], "count": list(i.values())[5]})
+    vypisanie["matches"].append(match)
+
+    return JsonResponse(vypisanie)
+
+
+def z6_4(request, url_id):
+    player = MatchesPlayersDetails.objects.using("dota").select_related("abilityupgrades","ability")\
+        .filter(player=url_id)\
+        .values("player__id", "hero__localized_name", "match_id", "abilityupgrades__ability__name")\
+        .annotate(
+            playe_nick=Coalesce('player__nick', Value('unknown'), output_field=TextField()),
+        )\
+        .order_by('match_id')\
+        .annotate(
+            count=Count('abilityupgrades__ability__name')
+        )\
+        .annotate(
+            level = Max('abilityupgrades__level')
+         ) \
+
+
+    row0 = player[0]
+    vypisanie = {"id": list(row0.values())[0], "player_nick": list(row0.values())[4], "matches": []}
+
+    match = {}
+    for i in player:
+        if len(match) != 0 and list(i.values())[2] != match["match_id"]:
+            vypisanie["matches"].append(match)
+            match = {}
+        if match == {}:
+            match["match_id"] = list(i.values())[2]
+            match["hero_localized_name"] = list(i.values())[1]
+            match["abilities"] = []
+        if match != {}:
+            match["abilities"].append({"ability_name": list(i.values())[3], "count": list(i.values())[5], "upgrade_level": list(i.values())[6]})
+    vypisanie["matches"].append(match)
+
+    return JsonResponse(vypisanie)
+
+
+def z6_5(request, url_id):
+    purchaces = MatchesPlayersDetails.objects.using("dota").filter(match_id=url_id).select_related("hero", "match","purchaselogs"). \
+        values("hero__id", "hero__localized_name", "purchaselogs__item_id__name") \
+        .annotate(
+            winner = Case(
+                When(Q(player_slot__lte=4), then = "match__radiant_win"),
+                When(Q(player_slot__gte=128) & Q(match__radiant_win=True), then = False),
+                When(Q(player_slot__gte=128) & Q(match__radiant_win=False), then = True)
+            )
+        )\
+        .filter(winner = True)\
+        .order_by('hero__id', 'purchaselogs__item_id__name')\
+        .annotate(
+            count = Count("purchaselogs__item_id__name")
+        )\
+
+    return HttpResponse(purchaces, content_type='application/json')
+
+
+def z6_6(reqest, url_id):
+    abilities = AbilityUpgrades.objects.using("dota").filter(ability_id=url_id)\
+        .select_related("ability", "match_player_detail", "match", "hero")\
+        .values("match_player_detail__hero__id", "match_player_detail__hero__localized_name","ability__name") \
+        .annotate(
+            winner = Case(
+                When(Q(match_player_detail__player_slot__gte=4), then = "match_player_detail__match__radiant_win"),
+                When(Q(match_player_detail__player_slot__gte=128) & Q(match_player_detail__match__radiant_win=True), then = False),
+                When(Q(match_player_detail__player_slot__gte=128) & Q(match_player_detail__match__radiant_win=False), then = True)
+            )
+        )\
+        .annotate(
+            ability_upgrade=F("time") * 100.0 / F("match_player_detail__match__duration"),
+            bucket = Case(
+                When(Q(ability_upgrade__lte=9), then = Value("0-9")),
+                When(Q(ability_upgrade__gte=10) & Q(ability_upgrade__lt=20), then=Value("10-29")),
+                When(Q(ability_upgrade__gte=20) & Q(ability_upgrade__lt=30), then=Value("20-29")),
+                When(Q(ability_upgrade__gte=30) & Q(ability_upgrade__lt=40), then=Value("30-39")),
+                When(Q(ability_upgrade__gte=40) & Q(ability_upgrade__lt=50), then=Value("40-49")),
+                When(Q(ability_upgrade__gte=50) & Q(ability_upgrade__lt=60), then=Value("50-59")),
+                When(Q(ability_upgrade__gte=60) & Q(ability_upgrade__lt=70), then=Value("60-69")),
+                When(Q(ability_upgrade__gte=70) & Q(ability_upgrade__lt=80), then=Value("70-79")),
+                When(Q(ability_upgrade__gte=80) & Q(ability_upgrade__lt=90), then=Value("80-89")),
+                When(Q(ability_upgrade__gte=90) & Q(ability_upgrade__lt=100), then=Value("90-99")),
+                When(Q(ability_upgrade__gte=100), then=Value("100-109"))
+            )
+        ) \
+
+
+    top_abilities = abilities.filter(ability_id=url_id)\
+        .values("match_player_detail__hero__id", "match_player_detail__hero__localized_name","ability__name","bucket") \
+        .annotate(
+            count = Count("bucket")
+        )\
+        .order_by("bucket")
+
+
+
+    return HttpResponse(top_abilities, content_type='application/json')
