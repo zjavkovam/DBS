@@ -24,7 +24,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/4.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = env('SECRET_KEY')
+SECRET_KEY = 'h^z13$qr_s_wd65@gnj7a=xs7t05$w7q8!x_8zsld#'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
@@ -83,11 +83,11 @@ DATABASES = {
     },
     'dota': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'HOST': env('DATABASE_HOST'),
-        'PORT': env('DATABASE_PORT'),
-        'NAME': env('DATABASE_NAME'),
-        'USER': env('DATABASE_USER'),
-        'PASSWORD': env('DATABASE_PASS')
+        'HOST': '147.175.150.216',
+        'PORT': '5432',
+        'NAME': 'dota2',
+        'USER': 'xzjavkova',
+        'PASSWORD': 'uVo.kur.2.esy',
     }
 }
 
