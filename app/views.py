@@ -284,7 +284,6 @@ def z6_2(request, url_id):
             roshan_xp=Coalesce('xp_roshan', Value(0)),
             experiences_gained=F("hero_xp") + F("creep_xp") + F("other_xp") + F("roshan_xp")
         )\
-        .explain(analyze=True)
 
 
     row0 =  player[0]
@@ -375,7 +374,7 @@ def z6_4(request, url_id):
 
 def z6_5(request, url_id):
     purchaces = MatchesPlayersDetails.objects.using("dota").filter(match_id=url_id).select_related("hero", "match","purchaselogs"). \
-        values("hero__id", "hero__localized_name", "purchaselogs__item_id__name") \
+        values("match_id","purchaselogs__item_id", "hero__id", "hero__localized_name", "purchaselogs__item_id__name") \
         .annotate(
             winner = Case(
                 When(Q(player_slot__lte=4), then = "match__radiant_win"),
@@ -388,8 +387,34 @@ def z6_5(request, url_id):
         .annotate(
             count = Count("purchaselogs__item_id__name")
         )\
+        .order_by('hero__localized_name', F('count').desc())\
+        .explain(analyze=True)
 
-    return HttpResponse(purchaces, content_type='application/json')
+    """
+    row0 = purchaces[0]
+    vypisanie = {"id": list(row0.values())[0], "heroes": []}
+
+    count = 0
+    hero = {}
+    for i in purchaces:
+        if len(hero) != 0 and list(i.values())[2] != hero["id"]:
+            vypisanie["heroes"].append(hero)
+            hero = {}
+            count = 0
+        if hero == {}:
+            hero["id"] = list(i.values())[2]
+            hero["name"] = list(i.values())[3]
+            hero["top_purchases"] = []
+        if hero != {} and count<5:
+            hero["top_purchases"].append({"id": list(i.values())[1], "name": list(i.values())[4], "count": list(i.values())[6]})
+            count += 1
+   
+    vypisanie["heroes"].append(hero)
+    """
+
+    return JsonResponse({"analyza":purchaces})
+
+
 
 
 def z6_6(reqest, url_id):
